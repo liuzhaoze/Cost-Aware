@@ -3,3 +3,6 @@ tianshou
 __pycache__/
 
 .vscode
+
+logs/*
+!logs/.placeholder
