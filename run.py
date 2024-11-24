@@ -21,6 +21,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--log-dir", type=str, default="./logs")
+    parser.add_argument("--eval", action="store_true", help="Evaluate the policy.")
 
     # Parameters for VMs
     parser.add_argument(
@@ -94,6 +95,13 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
+def set_log_path(args: argparse.Namespace) -> argparse.Namespace:
+    args.now = datetime.now().strftime("%Y%m%d-%H%M%S")
+    args.mode = "eval" if args.eval else "train"
+    args.log_path = os.path.join(args.log_dir, f"{args.now}-{args.mode}")
+    return args
+
+
 def get_env_info(args: argparse.Namespace) -> argparse.Namespace:
     env = ClusterEnv(args)
     args.state_space = env.observation_space
@@ -150,8 +158,7 @@ def train(args: argparse.Namespace, policy: BasePolicy | None = None, optimizer:
     test_collector = Collector(policy, test_envs, exploration_noise=True)
 
     # Logger
-    log_path = os.path.join(args.log_dir, datetime.now().strftime("%Y%m%d-%H%M%S"))
-    writer = SummaryWriter(log_path)
+    writer = SummaryWriter(args.log_path)
     logger = TensorboardLogger(writer)
 
     # Train
@@ -170,7 +177,7 @@ def train(args: argparse.Namespace, policy: BasePolicy | None = None, optimizer:
         return mean_rewards >= args.reward_threshold
 
     def save_best_fn(policy: BasePolicy) -> None:
-        path = os.path.join(log_path, "best.pth")
+        path = os.path.join(args.log_path, "best.pth")
         torch.save(policy.state_dict(), path)
         print(f"Save the best policy to {path}")
 
@@ -196,18 +203,11 @@ def train(args: argparse.Namespace, policy: BasePolicy | None = None, optimizer:
 
 if __name__ == "__main__":
     args = get_args()
+    args = set_log_path(args)
     args = get_env_info(args)
     print(
-        "Using device:",
-        args.device,
-        "| State space:",
-        args.state_space,
-        "| State shape:",
-        args.state_shape,
-        "| Action space:",
-        args.action_space,
-        "| Action shape:",
-        args.action_shape,
+        f"Mode: {args.mode} | Device: {args.device}\nState space: {args.state_space} | State shape: {args.state_shape} | Action space: {args.action_space} | Action shape: {args.action_shape}"
     )
 
-    result, policy = train(args)
+    if not args.eval:
+        result, policy = train(args)
