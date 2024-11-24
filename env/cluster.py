@@ -56,13 +56,22 @@ class ClusterEnv(gym.Env):
         if self.current_task == self.task_num:
             # Return a -1.0 array if all tasks have been processed
             return np.full(self.observation_space.shape, -1.0, dtype=np.float32)
+
         task_type = self.workload[self.current_task].type
         arrival_time = self.workload[self.current_task].arrival_time
         waiting_time = [max(0, arrival_time - idle_time) for idle_time in self.vm_idle_time]
         return np.array([task_type] + waiting_time, dtype=np.float32)
 
     def __get_info(self):
-        return {}  # TODO: Implement this method
+        if not self.current_task == self.task_num:
+            return {}
+
+        # Return metrics if all tasks have been processed
+        return {
+            "average_response_time": np.mean(self.response_time),
+            "success_rate": np.mean(np.array(self.is_success, dtype=np.int8)),
+            "cost": self.cost,
+        }
 
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
         super().reset(seed=seed)
@@ -113,6 +122,5 @@ class ClusterEnv(gym.Env):
         terminated = self.current_task == self.task_num
         truncated = False
         info = self.__get_info()
-        # TODO: Add more information to info
 
         return observation, reward, terminated, truncated, info

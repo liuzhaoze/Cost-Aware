@@ -211,19 +211,38 @@ def train(args: argparse.Namespace, policy: BasePolicy | None = None, optimizer:
 
 
 def evaluate(args: argparse.Namespace, policy: BasePolicy | None = None):
-    eval_envs = DummyVectorEnv([lambda: ClusterEnv(args)])
+    eval_envs = DummyVectorEnv([lambda: ClusterEnv(args) for _ in range(args.eval_episode)])
 
     # Set seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     eval_envs.seed(args.seed)
 
+    # Initialize policy
     policy = get_policy(args, policy)
     policy.eval()
     policy.set_eps(args.epsilon_test)
-    collector = Collector(policy, eval_envs, exploration_noise=True)
+
+    # Replay buffer
+    buffer = VectorReplayBuffer(total_size=(args.task_num + 10) * args.eval_episode, buffer_num=args.eval_episode)
+
+    # Collector
+    collector = Collector(policy, eval_envs, buffer, exploration_noise=True)
+
+    # Evaluate
     result = collector.collect(n_episode=args.eval_episode, reset_before_collect=True)
-    return result
+    metrics = {
+        "average_response_time": [
+            buffer.buffers[i].info.average_response_time.max() for i in range(len(buffer.buffers))
+        ],
+        "success_rate": [buffer.buffers[i].info.success_rate.max() for i in range(len(buffer.buffers))],
+        "cost": [buffer.buffers[i].info.cost.max() for i in range(len(buffer.buffers))],
+        "is_from_same_env": [
+            np.all(buffer.buffers[i].info.env_id[: len(buffer.buffers[i])] == buffer.buffers[i].info.env_id[0])
+            for i in range(len(buffer.buffers))
+        ],
+    }
+    return result, metrics
 
 
 if __name__ == "__main__":
@@ -238,5 +257,5 @@ if __name__ == "__main__":
         result, policy = train(args)
         print(result)
     else:
-        result = evaluate(args)
-        print(result)
+        result, metrics = evaluate(args)
+        print(result, metrics, sep="\n")
