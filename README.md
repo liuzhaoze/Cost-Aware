@@ -1,5 +1,17 @@
 # Cost-Aware
 
+## About `Cost-Aware.py`
+
+[The file](./Cost-Aware.py) `Cost-Aware.py` implements DQN algorithm manually. The only thing you need to do with this file is to understand the DQN algorithm and how it works.
+
+Use the following command to run the file:
+
+```shell
+python Cost-Aware.py
+```
+
+This repository will use the standardized DRL libraries [Gymnasium](https://gymnasium.farama.org) and [Tianshou](https://tianshou.org/en/stable/) to implement the environment and agent training.
+
 ## Python Environment Setup
 
 Create a new conda environment:
