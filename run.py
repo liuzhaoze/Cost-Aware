@@ -21,7 +21,6 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--log-dir", type=str, default="./logs")
-    parser.add_argument("--eval", action="store_true", help="Evaluate the policy.")
 
     # Parameters for VMs
     parser.add_argument(
@@ -89,6 +88,11 @@ def get_args() -> argparse.Namespace:
     )
     parser.add_argument("--episode-per-test", type=int, default=4, help="Number of episodes for one policy evaluation.")
 
+    # Parameters for evaluation
+    parser.add_argument("--eval", action="store_true", help="Evaluate the policy.")
+    parser.add_argument("--model-path", type=str, default=None, help="Path to the model for evaluation.")
+    parser.add_argument("--eval-episode", type=int, default=1, help="Number of episodes for evaluation.")
+
     if len(parser.parse_known_args()[1]) > 0:
         print("Unknown arguments:", parser.parse_known_args()[1])
 
@@ -133,6 +137,11 @@ def get_policy(
             estimation_step=args.td_step,
             target_update_freq=args.target_update_freq,
         )
+
+    if args.eval:
+        if args.model_path is None:
+            raise ValueError("Model path is required for evaluation. Train a model first.")
+        policy.load_state_dict(torch.load(args.model_path))
 
     return policy
 
@@ -201,6 +210,22 @@ def train(args: argparse.Namespace, policy: BasePolicy | None = None, optimizer:
     return result, policy
 
 
+def evaluate(args: argparse.Namespace, policy: BasePolicy | None = None):
+    eval_envs = DummyVectorEnv([lambda: ClusterEnv(args)])
+
+    # Set seed
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    eval_envs.seed(args.seed)
+
+    policy = get_policy(args, policy)
+    policy.eval()
+    policy.set_eps(args.epsilon_test)
+    collector = Collector(policy, eval_envs, exploration_noise=True)
+    result = collector.collect(n_episode=args.eval_episode, reset_before_collect=True)
+    return result
+
+
 if __name__ == "__main__":
     args = get_args()
     args = set_log_path(args)
@@ -211,3 +236,7 @@ if __name__ == "__main__":
 
     if not args.eval:
         result, policy = train(args)
+        print(result)
+    else:
+        result = evaluate(args)
+        print(result)
