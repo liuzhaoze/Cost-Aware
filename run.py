@@ -64,14 +64,29 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=64)
 
     # Parameters for training
-    parser.add_argument("--train-env-num", type=int, default=10, help="Number of environments for parallel training.")
-    parser.add_argument("--test-env-num", type=int, default=4, help="Number of environments for testing the policy.")
+    parser.add_argument("--train-env-num", type=int, default=4, help="Number of environments for parallel training.")
+    parser.add_argument("--test-env-num", type=int, default=2, help="Number of environments for testing the policy.")
     parser.add_argument("--reward-threshold", type=float, default=1e10, help="Threshold of reward for early stopping.")
-    parser.add_argument("--epoch-num", type=int, default=50, help="Number of epochs for each training environment.")
-    parser.add_argument("--step-per-epoch", type=int, default=1000)
-    parser.add_argument("--step-per-collect", type=int, default=10)
-    parser.add_argument("--episode-per-test", type=int, default=100)
-    parser.add_argument("--update-per-step", type=float, default=0.1)
+    parser.add_argument(
+        "--epoch-num",
+        type=int,
+        default=1500,
+        help="Number of epochs for training agent.\nAt the end of each epoch, the policy is evaluated on the test environments. If a new maximum reward is achieved, save the policy.",
+    )
+    parser.add_argument("--step-per-epoch", type=int, default=2000, help="Number of transitions collected per epoch.")
+    parser.add_argument(
+        "--step-per-collect",
+        type=int,
+        default=100,
+        help="Number of transitions the collector would collect before the network update",
+    )
+    parser.add_argument(
+        "--update-per-step",
+        type=float,
+        default=0.1,
+        help="How many gradient steps to perform per step in the environment.\n1.0 means perform one gradient step per environment step.\n0.1 means perform one gradient step per 10 environment steps.",
+    )
+    parser.add_argument("--episode-per-test", type=int, default=4, help="Number of episodes for one policy evaluation.")
 
     if len(parser.parse_known_args()[1]) > 0:
         print("Unknown arguments:", parser.parse_known_args()[1])
@@ -167,8 +182,8 @@ def train(args: argparse.Namespace, policy: BasePolicy | None = None, optimizer:
         test_collector=test_collector,
         step_per_epoch=args.step_per_epoch,
         step_per_collect=args.step_per_collect,
-        episode_per_test=args.episode_per_test,
         update_per_step=args.update_per_step,
+        episode_per_test=args.episode_per_test,
         train_fn=train_fn,
         test_fn=test_fn,
         stop_fn=stop_fn,
