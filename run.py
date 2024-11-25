@@ -92,6 +92,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--eval", action="store_true", help="Evaluate the policy.")
     parser.add_argument("--model-path", type=str, default=None, help="Path to the model for evaluation.")
     parser.add_argument("--eval-episode", type=int, default=1, help="Number of episodes for evaluation.")
+    parser.add_argument("--baseline", action="store_true", help="Use the baseline policy for evaluation.")
 
     if len(parser.parse_known_args()[1]) > 0:
         print("Unknown arguments:", parser.parse_known_args()[1])
@@ -221,7 +222,8 @@ def evaluate(args: argparse.Namespace, policy: BasePolicy | None = None):
     # Initialize policy
     policy = get_policy(args, policy)
     policy.eval()
-    policy.set_eps(args.epsilon_test)
+    if isinstance(policy, DQNPolicy):
+        policy.set_eps(args.epsilon_test)
 
     # Replay buffer
     buffer = VectorReplayBuffer(total_size=(args.task_num + 10) * args.eval_episode, buffer_num=args.eval_episode)
@@ -259,3 +261,18 @@ if __name__ == "__main__":
     else:
         result, metrics = evaluate(args)
         print(result, metrics, sep="\n")
+
+        if args.baseline:
+            from baselines import EarliestPolicy, RandomPolicy, RoundRobinPolicy
+
+            random_policy = RandomPolicy(action_space=args.action_space, observation_space=args.state_space)
+            result, metrics = evaluate(args, random_policy)
+            print("\nRandom policy:", result, metrics, sep="\n")
+
+            earliest_policy = EarliestPolicy(action_space=args.action_space, observation_space=args.state_space)
+            result, metrics = evaluate(args, earliest_policy)
+            print("\nEarliest policy:", result, metrics, sep="\n")
+
+            round_robin_policy = RoundRobinPolicy(action_space=args.action_space, observation_space=args.state_space)
+            result, metrics = evaluate(args, round_robin_policy)
+            print("\nRound-robin policy:", result, metrics, sep="\n")
