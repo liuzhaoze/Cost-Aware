@@ -226,7 +226,8 @@ def evaluate(args: argparse.Namespace, policy: BasePolicy | None = None):
         policy.set_eps(args.epsilon_test)
 
     # Replay buffer
-    buffer = VectorReplayBuffer(total_size=(args.task_num + 10) * args.eval_episode, buffer_num=args.eval_episode)
+    # Each ReplayBuffer only needs one space to store the last transition of each environment episode's info that includes metrics.
+    buffer = VectorReplayBuffer(total_size=args.eval_episode, buffer_num=args.eval_episode)
 
     # Collector
     collector = Collector(policy, eval_envs, buffer, exploration_noise=True)
@@ -234,15 +235,11 @@ def evaluate(args: argparse.Namespace, policy: BasePolicy | None = None):
     # Evaluate
     result = collector.collect(n_episode=args.eval_episode, reset_before_collect=True)
     metrics = {
-        "average_response_time": [
-            buffer.buffers[i].info.average_response_time.max() for i in range(len(buffer.buffers))
-        ],
-        "success_rate": [buffer.buffers[i].info.success_rate.max() for i in range(len(buffer.buffers))],
-        "cost": [buffer.buffers[i].info.cost.max() for i in range(len(buffer.buffers))],
-        "is_from_same_env": [
-            np.all(buffer.buffers[i].info.env_id[: len(buffer.buffers[i])] == buffer.buffers[i].info.env_id[0])
-            for i in range(len(buffer.buffers))
-        ],
+        "average_response_time": np.concatenate(
+            [buffer.buffers[i].info.average_response_time for i in range(len(buffer.buffers))]
+        ),
+        "success_rate": np.concatenate([buffer.buffers[i].info.success_rate for i in range(len(buffer.buffers))]),
+        "cost": np.concatenate([buffer.buffers[i].info.cost for i in range(len(buffer.buffers))]),
     }
     return result, metrics
 
