@@ -59,7 +59,7 @@ class ClusterEnv(gym.Env):
 
         task_type = self.workload[self.current_task].type
         arrival_time = self.workload[self.current_task].arrival_time
-        waiting_time = [max(0, arrival_time - idle_time) for idle_time in self.vm_idle_time]
+        waiting_time = [max(0, idle_time - arrival_time) for idle_time in self.vm_idle_time]
         return np.array([task_type] + waiting_time, dtype=np.float32)
 
     def __get_info(self):
