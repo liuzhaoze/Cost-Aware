@@ -64,6 +64,12 @@ The VM configuration is defined in `./config/vm.yaml`.
 
 The best model will be saved in `./logs/{timestamp}-train/best.pth`.
 
+### Use TensorBoard
+
+```shell
+tensorboard --logdir ./logs
+```
+
 ## Evaluate
 
 Use the following command to evaluate the agent:
