@@ -13,6 +13,7 @@ from tianshou.policy import BasePolicy, DQNPolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
+from utils import draw_chart, statistical_analysis
 
 
 def get_args() -> argparse.Namespace:
@@ -93,6 +94,8 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--model-path", type=str, default=None, help="Path to the model for evaluation.")
     parser.add_argument("--eval-episode", type=int, default=1, help="Number of episodes for evaluation.")
     parser.add_argument("--baseline", action="store_true", help="Use the baseline policy for evaluation.")
+    parser.add_argument("--plot", action="store_true", help="Plot the evaluation results.")
+    parser.add_argument("--fig-dir", type=str, default="./figures", help="Directory to save the figures.")
 
     if len(parser.parse_known_args()[1]) > 0:
         print("Unknown arguments:", parser.parse_known_args()[1])
@@ -256,20 +259,29 @@ if __name__ == "__main__":
         result, policy = train(args)
         print(result)
     else:
+        data = {}
+
         result, metrics = evaluate(args)
-        print(result, metrics, sep="\n")
+        data["DQN"] = metrics
+        if not args.baseline:
+            print(result, metrics, sep="\n")
 
         if args.baseline:
             from baselines import EarliestPolicy, RandomPolicy, RoundRobinPolicy
 
             random_policy = RandomPolicy(action_space=args.action_space, observation_space=args.state_space)
             result, metrics = evaluate(args, random_policy)
-            print("\nRandom policy:", result, metrics, sep="\n")
-
-            earliest_policy = EarliestPolicy(action_space=args.action_space, observation_space=args.state_space)
-            result, metrics = evaluate(args, earliest_policy)
-            print("\nEarliest policy:", result, metrics, sep="\n")
+            data["Random"] = metrics
 
             round_robin_policy = RoundRobinPolicy(action_space=args.action_space, observation_space=args.state_space)
             result, metrics = evaluate(args, round_robin_policy)
-            print("\nRound-robin policy:", result, metrics, sep="\n")
+            data["RoundRobin"] = metrics
+
+            earliest_policy = EarliestPolicy(action_space=args.action_space, observation_space=args.state_space)
+            result, metrics = evaluate(args, earliest_policy)
+            data["Earliest"] = metrics
+
+            statistical_analysis(data)
+
+        if args.plot:
+            draw_chart(args, data)
