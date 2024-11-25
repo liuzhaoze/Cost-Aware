@@ -9,11 +9,9 @@ from scipy.stats import ttest_ind
 __all__ = ["statistical_analysis", "draw_chart"]
 
 
-def statistical_analysis(data: dict):
+def statistical_analysis(data: dict, target: str, baselines: list):
     """Use a t-test to compare the significant differences between different policies."""
 
-    target = "DQN"
-    baselines = ["Random", "RoundRobin", "Earliest"]
     metrics = list(data[target].keys())
     is_significant_diff = {}
 
@@ -26,9 +24,8 @@ def statistical_analysis(data: dict):
     print(pd.DataFrame(is_significant_diff, index=baselines))
 
 
-def draw_chart(args: argparse.Namespace, data: dict):
+def draw_chart(args: argparse.Namespace, data: dict, policies: list):
     figures = set()
-    policies = ["Random", "RoundRobin", "Earliest", "DQN"]
     for p in policies:
         for metric, values in data[p].items():
             figures.add(metric)

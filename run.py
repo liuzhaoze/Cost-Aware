@@ -281,7 +281,7 @@ if __name__ == "__main__":
             result, metrics = evaluate(args, earliest_policy)
             data["Earliest"] = metrics
 
-            statistical_analysis(data)
+            statistical_analysis(data, target="DQN", baselines=["Random", "RoundRobin", "Earliest"])
 
         if args.plot:
-            draw_chart(args, data)
+            draw_chart(args, data, policies=["Random", "RoundRobin", "Earliest", "DQN"])
