@@ -4,15 +4,15 @@ from datetime import datetime
 
 import numpy as np
 import torch
-from torch.utils.tensorboard import SummaryWriter
-
-from env import ClusterEnv
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import BasePolicy, DQNPolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
+from torch.utils.tensorboard import SummaryWriter
+
+from env import ClusterEnv
 from utils import draw_chart, statistical_analysis
 
 

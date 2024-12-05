@@ -2,7 +2,6 @@ from typing import Any, Mapping, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
-
 from tianshou.data import Batch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol

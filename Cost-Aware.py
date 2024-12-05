@@ -61,15 +61,11 @@ class EpsilonGreedy:
         self.decay = decay
 
     def get_epsilon(self, current_step: int) -> float:
-        return self.end + (self.start - self.end) * math.exp(
-            -1.0 * current_step * self.decay
-        )
+        return self.end + (self.start - self.end) * math.exp(-1.0 * current_step * self.decay)
 
 
 class DRLAgent:
-    def __init__(
-        self, strategy: EpsilonGreedy, num_actions: int, device: torch.device
-    ) -> None:
+    def __init__(self, strategy: EpsilonGreedy, num_actions: int, device: torch.device) -> None:
         self.current_step = 0
         self.strategy = strategy
         self.num_actions = num_actions
@@ -90,9 +86,7 @@ class DRLAgent:
                 unsqueeze: 在张量的最前面添加一个维度，变成行向量
                 argmax: 在列的维度获得最大值的索引
                 """
-                return (
-                    policy_network(state).unsqueeze(dim=0).argmax(dim=1).to(self.device)
-                )
+                return policy_network(state).unsqueeze(dim=0).argmax(dim=1).to(self.device)
                 # 推理结束后自动打开梯度跟踪
 
 
@@ -105,9 +99,7 @@ class JobVirtualMachineEnv:
 
         self.computing_capacity = 1000.0
         self.type_VMs = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1])  # 0 - IO; 1 - Compute
-        self.boot_up_cost_VMs = np.array(
-            [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
-        )
+        self.boot_up_cost_VMs = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
         self.runtime_cost_VMs = np.array([1, 1, 2, 2, 4, 1, 1, 2, 2, 4])
         self.acceleration_VMs = np.array([1, 1, 1.1, 1.1, 1.2, 1, 1, 1.1, 1.1, 1.2])
         self.idle_time_VMs = np.zeros(self.type_VMs.shape)
@@ -141,9 +133,7 @@ class JobVirtualMachineEnv:
         submit_interval = np.random.exponential(
             1.0 / self.job_lambda, self.num_jobs
         )  # 任务的提交是泊松过程 => 任务提交的间隔服从指数分布
-        jobs_length = np.random.normal(
-            self.job_len_mean, self.job_len_std, self.num_jobs
-        )
+        jobs_length = np.random.normal(self.job_len_mean, self.job_len_std, self.num_jobs)
         submit_time = 0
         for id in range(self.num_jobs):
             submit_time += submit_interval[id]
@@ -160,15 +150,11 @@ class JobVirtualMachineEnv:
         if self.done:
             # 调度结束时返回全 -1 向量
             # 不能用全 0 向量，因为如果第一个任务类型为 0 ，所有虚拟机的 idle time 都为 0 ，这种情况不是调度结束的情况
-            return (
-                torch.zeros(self.num_state_features(), device=self.device).float() - 1
-            )
+            return torch.zeros(self.num_state_features(), device=self.device).float() - 1
 
         job_type = self.workload[self.current_job].type
         submit_time = self.workload[self.current_job].submit_time
-        wait_time = (self.idle_time_VMs - submit_time).clip(
-            min=0
-        )  # 空闲时刻减提交时刻小于零说明等待时间为0
+        wait_time = (self.idle_time_VMs - submit_time).clip(min=0)  # 空闲时刻减提交时刻小于零说明等待时间为0
         return torch.tensor(
             np.concatenate(([job_type], wait_time)),
             device=self.device,
@@ -189,13 +175,8 @@ class JobVirtualMachineEnv:
         end_time = start_time + execution_time
         wait_time = max(idle_time - job.submit_time, 0)
 
-        cost = (
-            self.boot_up_cost_VMs[chosen_VM]
-            + execution_time * self.runtime_cost_VMs[chosen_VM]
-        )
-        reward = (
-            (1 + math.exp(1.5 - cost)) * (execution_time) / (execution_time + wait_time)
-        )
+        cost = self.boot_up_cost_VMs[chosen_VM] + execution_time * self.runtime_cost_VMs[chosen_VM]
+        reward = (1 + math.exp(1.5 - cost)) * (execution_time) / (execution_time + wait_time)
 
         self.jobs_response_time.append(wait_time + execution_time)
         self.total_cost += cost
@@ -212,9 +193,7 @@ class QValues:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     @staticmethod
-    def get_current(
-        policy_net: DQN, states: torch.Tensor, actions: torch.Tensor
-    ) -> torch.Tensor:
+    def get_current(policy_net: DQN, states: torch.Tensor, actions: torch.Tensor) -> torch.Tensor:
         """
         dim 0: 每个样本状态的 Q 值\n
         dim 1: 所有 action 的 Q 值\n
@@ -231,18 +210,14 @@ class QValues:
         [1]: max 返回类型的第 1 个元素是最大值对应的索引
         """
         # 找到表示终止状态的全 -1 向量的索引
-        final_state_locations = (
-            next_states.flatten(start_dim=1).max(dim=1)[0].eq(-1).type(torch.bool)
-        )
+        final_state_locations = next_states.flatten(start_dim=1).max(dim=1)[0].eq(-1).type(torch.bool)
         # 非终止状态的索引
         non_final_state_locations = final_state_locations == False
         # 非终止状态的样本
         non_final_states = next_states[non_final_state_locations]
 
         next_q_values = torch.zeros(next_states.shape[0], device=QValues.device)
-        next_q_values[non_final_state_locations] = (
-            target_net(non_final_states).max(dim=1)[0].detach()
-        )
+        next_q_values[non_final_state_locations] = target_net(non_final_states).max(dim=1)[0].detach()
         """
         计算 TD target: target_q_value = reward + (next_q_value * gamma) 时
         如果 next_state 是终止状态， reward 已经是 return 中的最后一项，不需要加上 gamma * next_q_value
